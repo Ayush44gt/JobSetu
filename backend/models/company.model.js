@@ -4,19 +4,24 @@ const companySchema = new mongoose.Schema({
     name:{
         type:String,
         required:true,
-        unique:true
+        unique:true,
+        trim:true
     },
     description:{
         type:String, 
+        default:""
     },
     website:{
-        type:String 
+        type:String,
+        default:""
     },
     location:{
-        type:String 
+        type:String,
+        default:""
     },
     logo:{
-        type:String // URL to company logo
+        type:String, // URL to company logo
+        default:""
     },
     userId:{
         type:mongoose.Schema.Types.ObjectId,

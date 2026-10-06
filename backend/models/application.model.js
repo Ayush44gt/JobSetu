@@ -17,4 +17,6 @@ const applicationSchema = new mongoose.Schema({
         default:'pending'
     }
 },{timestamps:true});
+// one application per student per job
+applicationSchema.index({ job: 1, applicant: 1 }, { unique: true });
 export const Application  = mongoose.model("Application", applicationSchema);

@@ -1,19 +1,20 @@
-import React, { useEffect, useState } from 'react'
-import Navbar from '../shared/Navbar'
+import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
-import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Label } from '../ui/label'
 import { Input } from '../ui/input'
-import axios from 'axios'
-import { COMPANY_API_END_POINT } from '@/utils/constant'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Textarea } from '../ui/textarea'
+import api, { getErrorMessage } from '@/lib/api'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { useSelector } from 'react-redux'
-import useGetCompanyById from '@/hooks/useGetCompanyById'
+import useFetch from '@/hooks/useFetch'
+import PageHeader from './PageHeader'
+import CompanyLogo from '../shared/CompanyLogo'
+import { ErrorState, PageLoader, SubmitButton } from '../shared/States'
 
 const CompanySetup = () => {
     const params = useParams();
-    useGetCompanyById(params.id);
+    const { data, loading: fetching, error, refetch } = useFetch(`/company/get/${params.id}`);
+    const singleCompany = data?.company;
     const [input, setInput] = useState({
         name: "",
         description: "",
@@ -21,7 +22,7 @@ const CompanySetup = () => {
         location: "",
         file: null
     });
-    const {singleCompany} = useSelector(store=>store.company);
+    const [preview, setPreview] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
@@ -30,8 +31,9 @@ const CompanySetup = () => {
     }
 
     const changeFileHandler = (e) => {
-        const file = e.target.files?.[0];
+        const file = e.target.files?.[0] || null;
         setInput({ ...input, file });
+        setPreview(file ? URL.createObjectURL(file) : "");
     }
 
     const submitHandler = async (e) => {
@@ -46,98 +48,66 @@ const CompanySetup = () => {
         }
         try {
             setLoading(true);
-            const res = await axios.put(`${COMPANY_API_END_POINT}/update/${params.id}`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                },
-                withCredentials: true
-            });
+            const res = await api.put(`/company/update/${params.id}`, formData);
             if (res.data.success) {
                 toast.success(res.data.message);
                 navigate("/admin/companies");
             }
         } catch (error) {
-            console.log(error);
-            toast.error(error.response.data.message);
+            toast.error(getErrorMessage(error));
         } finally {
             setLoading(false);
         }
     }
 
     useEffect(() => {
+        if (!singleCompany) return;
         setInput({
             name: singleCompany.name || "",
             description: singleCompany.description || "",
             website: singleCompany.website || "",
             location: singleCompany.location || "",
-            file: singleCompany.file || null
+            file: null
         })
     },[singleCompany]);
 
-    return (
-        <div>
-            <Navbar />
-            <div className='max-w-xl mx-auto my-10'>
-                <form onSubmit={submitHandler}>
-                    <div className='flex items-center gap-5 p-8'>
-                        <Button onClick={() => navigate("/admin/companies")} variant="outline" className="flex items-center gap-2 text-gray-500 font-semibold">
-                            <ArrowLeft />
-                            <span>Back</span>
-                        </Button>
-                        <h1 className='font-bold text-xl'>Company Setup</h1>
-                    </div>
-                    <div className='grid grid-cols-2 gap-4'>
-                        <div>
-                            <Label>Company Name</Label>
-                            <Input
-                                type="text"
-                                name="name"
-                                value={input.name}
-                                onChange={changeEventHandler}
-                            />
-                        </div>
-                        <div>
-                            <Label>Description</Label>
-                            <Input
-                                type="text"
-                                name="description"
-                                value={input.description}
-                                onChange={changeEventHandler}
-                            />
-                        </div>
-                        <div>
-                            <Label>Website</Label>
-                            <Input
-                                type="text"
-                                name="website"
-                                value={input.website}
-                                onChange={changeEventHandler}
-                            />
-                        </div>
-                        <div>
-                            <Label>Location</Label>
-                            <Input
-                                type="text"
-                                name="location"
-                                value={input.location}
-                                onChange={changeEventHandler}
-                            />
-                        </div>
-                        <div>
-                            <Label>Logo</Label>
-                            <Input
-                                type="file"
-                                accept="image/*"
-                                onChange={changeFileHandler}
-                            />
-                        </div>
-                    </div>
-                    {
-                        loading ? <Button className="w-full my-4"> <Loader2 className='mr-2 h-4 w-4 animate-spin' /> Please wait </Button> : <Button type="submit" className="w-full my-4">Update</Button>
-                    }
-                </form>
-            </div>
+    if (fetching) return <PageLoader />
+    if (error) return <div className='page py-10'><ErrorState message={error} onRetry={refetch} /></div>
 
+    return (
+        <div className='page max-w-2xl py-8'>
+            <PageHeader backTo="/admin/companies" backLabel="Companies" title="Company setup" description="This is what students see on your job posts." />
+            <form onSubmit={submitHandler} className='surface mt-6 p-6'>
+                <div className='flex items-center gap-4'>
+                    <CompanyLogo company={{ name: input.name, logo: preview || singleCompany?.logo }} className="h-16 w-16 rounded-2xl" />
+                    <div className='grid flex-1 gap-1.5'>
+                        <Label htmlFor="logo">Logo</Label>
+                        <Input id="logo" type="file" accept="image/*" onChange={changeFileHandler} className="cursor-pointer" />
+                    </div>
+                </div>
+                <div className='mt-5 grid gap-4 sm:grid-cols-2'>
+                    <div className='grid gap-1.5'>
+                        <Label htmlFor="name">Company name</Label>
+                        <Input id="name" type="text" name="name" required value={input.name} onChange={changeEventHandler} />
+                    </div>
+                    <div className='grid gap-1.5'>
+                        <Label htmlFor="location">Location</Label>
+                        <Input id="location" type="text" name="location" placeholder="Bengaluru" value={input.location} onChange={changeEventHandler} />
+                    </div>
+                    <div className='grid gap-1.5 sm:col-span-2'>
+                        <Label htmlFor="website">Website</Label>
+                        <Input id="website" type="url" name="website" placeholder="https://example.com" value={input.website} onChange={changeEventHandler} />
+                    </div>
+                    <div className='grid gap-1.5 sm:col-span-2'>
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea id="description" name="description" placeholder="What does the company do?" value={input.description} onChange={changeEventHandler} />
+                    </div>
+                </div>
+                <div className='mt-6 flex items-center justify-end gap-2'>
+                    <Button type="button" variant="outline" asChild><Link to="/admin/companies">Cancel</Link></Button>
+                    <SubmitButton loading={loading}>Save company</SubmitButton>
+                </div>
+            </form>
         </div>
     )
 }

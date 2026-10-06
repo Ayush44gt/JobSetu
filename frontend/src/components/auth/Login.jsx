@@ -1,25 +1,21 @@
-import React, { useEffect, useState } from 'react'
-import Navbar from '../shared/Navbar'
+import { useState } from 'react'
 import { Label } from '../ui/label'
 import { Input } from '../ui/input'
-import { RadioGroup } from '../ui/radio-group'
-import { Button } from '../ui/button'
-import { Link, useNavigate } from 'react-router-dom'
-import axios from 'axios'
-import { USER_API_END_POINT } from '@/utils/constant'
+import { Link } from 'react-router-dom'
+import api, { getErrorMessage } from '@/lib/api'
 import { toast } from 'sonner'
-import { useDispatch, useSelector } from 'react-redux'
-import { setLoading, setUser } from '@/redux/authSlice'
-import { Loader2 } from 'lucide-react'
+import { useDispatch } from 'react-redux'
+import { setUser } from '@/redux/authSlice'
+import { AuthShell, RolePicker } from './AuthShell'
+import { SubmitButton } from '../shared/States'
 
 const Login = () => {
     const [input, setInput] = useState({
         email: "",
         password: "",
-        role: "",
+        role: "student",
     });
-    const { loading,user } = useSelector(store => store.auth);
-    const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
 
     const changeEventHandler = (e) => {
@@ -29,90 +25,41 @@ const Login = () => {
     const submitHandler = async (e) => {
         e.preventDefault();
         try {
-            dispatch(setLoading(true));
-            const res = await axios.post(`${USER_API_END_POINT}/login`, input, {
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                withCredentials: true,
-            });
+            setLoading(true);
+            const res = await api.post("/user/login", input, { skipAuthRedirect: true });
             if (res.data.success) {
-                dispatch(setUser(res.data.user));
-                navigate("/");
                 toast.success(res.data.message);
+                // GuestRoute sends the user on to where they were going
+                dispatch(setUser(res.data.user));
             }
         } catch (error) {
-            console.log(error);
-            toast.error(error.response.data.message);
+            toast.error(getErrorMessage(error));
         } finally {
-            dispatch(setLoading(false));
+            setLoading(false);
         }
     }
-    useEffect(()=>{
-        if(user){
-            navigate("/");
-        }
-    },[])
-    return (
-        <div>
-            <Navbar />
-            <div className='flex items-center justify-center max-w-7xl mx-auto'>
-                <form onSubmit={submitHandler} className='w-1/2 border border-gray-200 rounded-md p-4 my-10'>
-                    <h1 className='font-bold text-xl mb-5'>Login</h1>
-                    <div className='my-2'>
-                        <Label>Email</Label>
-                        <Input
-                            type="email"
-                            value={input.email}
-                            name="email"
-                            onChange={changeEventHandler}
-                            placeholder="patel@gmail.com"
-                        />
-                    </div>
 
-                    <div className='my-2'>
-                        <Label>Password</Label>
-                        <Input
-                            type="password"
-                            value={input.password}
-                            name="password"
-                            onChange={changeEventHandler}
-                            placeholder="patel@gmail.com"
-                        />
-                    </div>
-                    <div className='flex items-center justify-between'>
-                        <RadioGroup className="flex items-center gap-4 my-5">
-                            <div className="flex items-center space-x-2">
-                                <Input
-                                    type="radio"
-                                    name="role"
-                                    value="student"
-                                    checked={input.role === 'student'}
-                                    onChange={changeEventHandler}
-                                    className="cursor-pointer"
-                                />
-                                <Label htmlFor="r1">Student</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Input
-                                    type="radio"
-                                    name="role"
-                                    value="recruiter"
-                                    checked={input.role === 'recruiter'}
-                                    onChange={changeEventHandler}
-                                    className="cursor-pointer"
-                                />
-                                <Label htmlFor="r2">Recruiter</Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
-                    {
-                        loading ? <Button className="w-full my-4"> <Loader2 className='mr-2 h-4 w-4 animate-spin' /> Please wait </Button> : <Button type="submit" className="w-full my-4">Login</Button>
-                    }
-                    <span className='text-sm'>Don't have an account? <Link to="/signup" className='text-blue-600'>Signup</Link></span>
-                </form>
-            </div>
-        </div>
+    return (
+        <AuthShell
+            title="Welcome back"
+            subtitle="Login to continue to JobSetu."
+            footer={<>Don&apos;t have an account? <Link to="/signup" className='font-medium text-primary hover:underline'>Sign up</Link></>}>
+            <form onSubmit={submitHandler} className='grid gap-4'>
+                <div className='grid gap-1.5'>
+                    <Label>I am a</Label>
+                    <RolePicker value={input.role} onChange={(role) => setInput({ ...input, role })} />
+                </div>
+                <div className='grid gap-1.5'>
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" required autoComplete="email" value={input.email} name="email" onChange={changeEventHandler} placeholder="you@example.com" />
+                </div>
+                <div className='grid gap-1.5'>
+                    <Label htmlFor="password">Password</Label>
+                    <Input id="password" type="password" required autoComplete="current-password" value={input.password} name="password" onChange={changeEventHandler} placeholder="Your password" />
+                </div>
+                <SubmitButton loading={loading} className="mt-2 w-full">Login</SubmitButton>
+            </form>
+        </AuthShell>
     )
 }
 

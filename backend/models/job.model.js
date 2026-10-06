@@ -1,9 +1,12 @@
 import mongoose from "mongoose";
 
+export const JOB_TYPES = ["Full-time", "Part-time", "Internship", "Contract"];
+
 const jobSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: true
+        required: true,
+        trim: true
     },
     description: {
         type: String,
@@ -12,25 +15,36 @@ const jobSchema = new mongoose.Schema({
     requirements: [{
         type: String
     }],
+    // annual package in LPA (lakhs per annum)
     salary: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     },
+    // minimum experience in years
     experienceLevel:{
         type:Number,
         required:true,
+        min: 0
     },
     location: {
         type: String,
-        required: true
+        required: true,
+        trim: true
     },
     jobType: {
         type: String,
+        enum: JOB_TYPES,
         required: true
     },
     position: {
         type: Number,
-        required: true
+        required: true,
+        min: 1
+    },
+    isOpen: {
+        type: Boolean,
+        default: true
     },
     company: {
         type: mongoose.Schema.Types.ObjectId,

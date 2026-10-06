@@ -1,35 +1,54 @@
-import React, { useEffect, useState } from 'react'
-import Navbar from '../shared/Navbar'
-import { Input } from '../ui/input'
+import { useState } from 'react'
 import { Button } from '../ui/button' 
-import { useNavigate } from 'react-router-dom' 
-import { useDispatch } from 'react-redux' 
+import { Link } from 'react-router-dom' 
+import { Plus } from 'lucide-react'
 import AdminJobsTable from './AdminJobsTable'
-import useGetAllAdminJobs from '@/hooks/useGetAllAdminJobs'
-import { setSearchJobByText } from '@/redux/jobSlice'
+import useFetch from '@/hooks/useFetch'
+import PageHeader, { SearchInput } from './PageHeader'
 
 const AdminJobs = () => {
-  useGetAllAdminJobs();
+  const { data, setData, loading, error, refetch } = useFetch("/job/getadminjobs");
   const [input, setInput] = useState("");
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const jobs = data?.jobs || [];
 
-  useEffect(() => {
-    dispatch(setSearchJobByText(input));
-  }, [input]);
+  const sum = (key) => jobs.reduce((total, job) => total + (job[key] || 0), 0);
+  const stats = [
+    { label: "Jobs posted", value: jobs.length },
+    { label: "Open jobs", value: jobs.filter((job) => job.isOpen).length },
+    { label: "Total applicants", value: sum("applicantsCount") },
+    { label: "Awaiting review", value: sum("pendingCount") },
+  ];
+
   return (
-    <div>
-      <Navbar />
-      <div className='max-w-6xl mx-auto my-10'>
-        <div className='flex items-center justify-between my-5'>
-          <Input
-            className="w-fit"
-            placeholder="Filter by name, role"
-            onChange={(e) => setInput(e.target.value)}
-          />
-          <Button onClick={() => navigate("/admin/jobs/create")}>New Jobs</Button>
-        </div>
-        <AdminJobsTable />
+    <div className='page py-8'>
+      <PageHeader
+        title="Jobs"
+        description="Roles you have posted and how many people applied."
+        action={<Button asChild><Link to="/admin/jobs/create"><Plus className='mr-2 h-4 w-4' /> Post a job</Link></Button>}
+      />
+      <div className='mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4'>
+        {
+          stats.map((stat) => (
+            <div key={stat.label} className='surface p-4'>
+              <p className='text-xs text-muted-foreground'>{stat.label}</p>
+              <p className='mt-1 text-2xl font-bold'>{loading || error ? "—" : stat.value}</p>
+            </div>
+          ))
+        }
+      </div>
+      <div className='mt-6'>
+        <SearchInput value={input} onChange={setInput} placeholder="Filter by role or company" />
+      </div>
+      <div className='surface mt-4 overflow-hidden'>
+        <AdminJobsTable
+          jobs={data?.jobs}
+          search={input}
+          loading={loading}
+          error={error}
+          onRetry={refetch}
+          onDeleted={(id) => setData({ ...data, jobs: jobs.filter((job) => job._id !== id) })}
+          onStatusChanged={(id, isOpen) => setData({ ...data, jobs: jobs.map((job) => job._id === id ? { ...job, isOpen } : job) })}
+        />
       </div>
     </div>
   )

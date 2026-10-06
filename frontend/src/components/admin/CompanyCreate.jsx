@@ -1,58 +1,60 @@
-import React, { useState } from 'react'
-import Navbar from '../shared/Navbar'
+import { useState } from 'react'
 import { Label } from '../ui/label'
 import { Input } from '../ui/input'
 import { Button } from '../ui/button'
-import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
-import { COMPANY_API_END_POINT } from '@/utils/constant'
+import { Link, useNavigate } from 'react-router-dom'
+import api, { getErrorMessage } from '@/lib/api'
 import { toast } from 'sonner'
-import { useDispatch } from 'react-redux'
-import { setSingleCompany } from '@/redux/companySlice'
+import PageHeader from './PageHeader'
+import { SubmitButton } from '../shared/States'
 
 const CompanyCreate = () => {
     const navigate = useNavigate();
-    const [companyName, setCompanyName] = useState();
-    const dispatch = useDispatch();
-    const registerNewCompany = async () => {
+    const [companyName, setCompanyName] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const registerNewCompany = async (e) => {
+        e.preventDefault();
         try {
-            const res = await axios.post(`${COMPANY_API_END_POINT}/register`, {companyName}, {
-                headers:{
-                    'Content-Type':'application/json'
-                },
-                withCredentials:true
-            });
+            setLoading(true);
+            const res = await api.post("/company/register", {companyName});
             if(res?.data?.success){
-                dispatch(setSingleCompany(res.data.company));
                 toast.success(res.data.message);
                 const companyId = res?.data?.company?._id;
                 navigate(`/admin/companies/${companyId}`);
             }
         } catch (error) {
-            console.log(error);
+            toast.error(getErrorMessage(error));
+        } finally {
+            setLoading(false);
         }
     }
     return (
-        <div>
-            <Navbar />
-            <div className='max-w-4xl mx-auto'>
-                <div className='my-10'>
-                    <h1 className='font-bold text-2xl'>Your Company Name</h1>
-                    <p className='text-gray-500'>What would you like to give your company name? you can change this later.</p>
+        <div className='page max-w-2xl py-8'>
+            <PageHeader
+                backTo="/admin/companies"
+                backLabel="Companies"
+                title="Register a company"
+                description="Start with the name. You can add the logo, website and description next."
+            />
+            <form onSubmit={registerNewCompany} className='surface mt-6 p-6'>
+                <div className='grid gap-1.5'>
+                    <Label htmlFor="companyName">Company name</Label>
+                    <Input
+                        id="companyName"
+                        type="text"
+                        required
+                        autoFocus
+                        value={companyName}
+                        placeholder="Microsoft, Zomato, etc."
+                        onChange={(e) => setCompanyName(e.target.value)}
+                    />
                 </div>
-
-                <Label>Company Name</Label>
-                <Input
-                    type="text"
-                    className="my-2"
-                    placeholder="JobHunt, Microsoft etc."
-                    onChange={(e) => setCompanyName(e.target.value)}
-                />
-                <div className='flex items-center gap-2 my-10'>
-                    <Button variant="outline" onClick={() => navigate("/admin/companies")}>Cancel</Button>
-                    <Button onClick={registerNewCompany}>Continue</Button>
+                <div className='mt-6 flex items-center justify-end gap-2'>
+                    <Button type="button" variant="outline" asChild><Link to="/admin/companies">Cancel</Link></Button>
+                    <SubmitButton loading={loading}>Continue</SubmitButton>
                 </div>
-            </div>
+            </form>
         </div>
     )
 }

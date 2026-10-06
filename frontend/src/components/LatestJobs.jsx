@@ -1,21 +1,29 @@
-// import React from 'react'
-import LatestJobCards from './LatestJobCards';
-import { useSelector } from 'react-redux'; 
-
-// const randomJobs = [1, 2, 3, 4, 5, 6, 7, 8];
+import { Link } from 'react-router-dom'
+import { ArrowRight, Briefcase } from 'lucide-react'
+import { JobGrid } from './Job'
+import { EmptyState } from './shared/States'
+import useFetch from '@/hooks/useFetch'
 
 const LatestJobs = () => {
-    const {allJobs} = useSelector(store=>store.job);
-   
+    const { data, loading, error, refetch } = useFetch("/job/get");
+
     return (
-        <div className='max-w-7xl mx-auto my-20'>
-            <h1 className='text-4xl font-bold'><span className='text-[#6A38C2]'>Latest & Top </span> Job Openings</h1>
-            <div className='grid grid-cols-3 gap-4 my-5'>
-                {
-                    allJobs.length <= 0 ? <span>No Job Available</span> : allJobs?.slice(0,6).map((job) => <LatestJobCards key={job._id} job={job}/>)
-                }
+        <section className='page py-16'>
+            <div className='mb-8 flex items-end justify-between gap-4'>
+                <div>
+                    <h2 className='text-2xl font-bold sm:text-3xl'><span className='text-gradient'>Latest</span> job openings</h2>
+                    <p className='mt-1 text-sm text-muted-foreground'>Fresh roles posted by recruiters this week.</p>
+                </div>
+                <Link to="/jobs" className='hidden shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline sm:flex'>View all <ArrowRight className='h-4 w-4' /></Link>
             </div>
-        </div>
+            <JobGrid
+                jobs={data?.jobs?.slice(0, 6)}
+                loading={loading}
+                error={error}
+                onRetry={refetch}
+                empty={<EmptyState icon={Briefcase} title="No jobs posted yet" description="New openings will show up here as soon as recruiters post them." />}
+            />
+        </section>
     )
 }
 
